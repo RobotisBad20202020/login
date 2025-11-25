@@ -1,0 +1,67 @@
+import React, { useEffect, useState } from 'react';
+import { Button, View, Text, ActivityIndicator } from 'react-native';
+import auth from '@react-native-firebase/auth';
+import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
+import { configureGoogleSignIn, signInWithGoogle } from './src/utils/auth';
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // 1. Configure Google Sign-In on app startup
+    configureGoogleSignIn();
+
+    // 2. Listen to Firebase Auth state changes
+    const subscriber = auth().onAuthStateChanged((userState) => {
+      setUser(userState);
+      setLoading(false);
+    });
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      await signInWithGoogle();
+      // Redirect is handled automatically by the state change (user becomes !null)
+    } catch (error) {
+      setLoading(false);
+      // Alert.alert("Error", error.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await auth().signOut();
+      // Optional: also revoke Google access
+      // await GoogleSignin.revokeAccess(); 
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (loading) return <ActivityIndicator size="large" />;
+
+  if (user) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Welcome, {user.displayName}</Text>
+        <Text>{user.email}</Text>
+        <Button title="Sign Out" onPress={handleLogout} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text style={{ marginBottom: 20 }}>Please Sign In</Text>
+      
+      <GoogleSigninButton
+        size={GoogleSigninButton.Size.Wide}
+        color={GoogleSigninButton.Color.Dark}
+        onPress={handleGoogleLogin}
+      />
+    </View>
+  );
+}

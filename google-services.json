@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "117549545292",
+    "project_id": "internship-bb0a2",
+    "storage_bucket": "internship-bb0a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:117549545292:android:40a327218a1bf349fe41e9",
+        "android_client_info": {
+          "package_name": "com.meghdut2077.googleauth"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "117549545292-5ks5qa7nrt38dsoihuggnppds5vj7e4a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meghdut2077.googleauth",
+            "certificate_hash": "0042f5de087b6eda5aa5a2f976dc81fb901a300d"
+          }
+        },
+        {
+          "client_id": "117549545292-hh2rpe1m3t3uhs0e488oarj6vq53b2v7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.meghdut2077.googleauth",
+            "certificate_hash": "5315163fda39a55515226856150bb3d63a505d8f"
+          }
+        },
+        {
+          "client_id": "117549545292-kjpnnb6740d3ga8ps6e2jgs90v235mh7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGevnA7o_Cw7x3rn6RlFL-cIKLUKRn4Wo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "117549545292-kjpnnb6740d3ga8ps6e2jgs90v235mh7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
