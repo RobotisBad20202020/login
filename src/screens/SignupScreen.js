@@ -1,179 +1,338 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
   KeyboardAvoidingView,
   Platform,
-  StatusBar
+  ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-
-const COLORS = {
-  bg: '#FDFCF8',
-  primary: '#1A1A1A',
-  gold: '#C6A87C',
-  goldLight: '#E5D4B3',
-  glass: 'rgba(255, 255, 255, 0.95)',
-  border: 'rgba(198, 168, 124, 0.3)',
-  inputBg: '#FAFAFA',
-  placeholder: '#A1A1AA',
-};
+import auth from '@react-native-firebase/auth';
 
 export default function SignupScreen({ navigation }) {
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async () => {
-    if (!email || !password || !name) return Alert.alert('Coiffeur', 'Please complete your profile.');
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    setIsLoading(true);
     try {
+      // Create user with Firebase
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
-      await userCredential.user.updateProfile({ displayName: name });
+      
+      // Update user profile with username
+      await userCredential.user.updateProfile({
+        displayName: username,
+      });
+
+      Alert.alert('Success', 'Account created successfully!', [
+        { text: 'OK', onPress: () => navigation.replace('Home') }
+      ]);
     } catch (error) {
-      Alert.alert('Signup Failed', error.message);
+      console.error('Signup error:', error);
+      let errorMessage = 'Signup failed. Please try again.';
+      if (error.code === 'auth/email-already-in-use') errorMessage = 'This email is already registered. Please login instead.';
+      else if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address format.';
+      else if (error.code === 'auth/weak-password') errorMessage = 'Password is too weak. Use a stronger password.';
+      
+      Alert.alert('Signup Failed', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // --- Google Sign-In Logic ---
-  const handleGoogleSignup = async () => {
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
     try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const { idToken } = await GoogleSignin.signIn();
+      await GoogleSignin.hasPlayServices();
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken;
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      
-      // Create user and then (optional) update profile name if needed
-      const userCredential = await auth().signInWithCredential(googleCredential);
-      
-      // Note: Google Sign-In automatically handles account creation if it doesn't exist
+      await auth().signInWithCredential(googleCredential);
+      navigation.replace('Home');
     } catch (error) {
-      console.error(error);
-      Alert.alert("Google Sign-In Error", error.message);
+      console.error('Google Sign-In error:', error);
+      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-      <View style={styles.glowCenter} />
-
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={styles.content}
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <Text style={styles.brand}>COIFFEUR</Text>
-          <Text style={styles.title}>Join the Elite</Text>
-          <Text style={styles.subtitle}>Your exclusive journey begins now.</Text>
-        </View>
-
-        <View style={styles.glassCard}>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="John Doe"
-              placeholderTextColor={COLORS.placeholder}
-              value={name}
-              onChangeText={setName}
-            />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+             <View style={styles.decorativeCircle} />
+            <Text style={styles.brandLabel}>COIFFEUR</Text>
+            <Text style={styles.title}>Join the Elite</Text>
+            <Text style={styles.subtitle}>Your exclusive journey begins now.</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="client@example.com"
-              placeholderTextColor={COLORS.placeholder}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-            />
-          </View>
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>FULL NAME</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="John Doe"
+                placeholderTextColor="#A0A0A0"
+                value={username}
+                onChangeText={setUsername}
+              />
+            </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Set Password</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Min. 8 characters"
-              placeholderTextColor={COLORS.placeholder}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="client@example.com"
+                placeholderTextColor="#A0A0A0"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-          <TouchableOpacity style={styles.goldButton} onPress={handleSignup} activeOpacity={0.9}>
-             <Text style={styles.btnText}>BECOME A MEMBER</Text>
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>SET PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Min. 6 characters"
+                placeholderTextColor="#A0A0A0"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-          {/* --- OR DIVIDER --- */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.line} />
-          </View>
+            <View style={styles.inputContainer}>
+               {/* Optional: Confirm Password could be removed for cleaner UI if preferred, but keeping for safety */}
+              <TextInput
+                style={[styles.input, { marginTop: 10 }]}
+                placeholder="Confirm Password"
+                placeholderTextColor="#A0A0A0"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
 
-          {/* --- GOOGLE BUTTON --- */}
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} activeOpacity={0.9}>
-             <Text style={styles.googleIcon}>G</Text> 
-             <Text style={styles.googleText}>Sign up with Google</Text>
-          </TouchableOpacity>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#C5A065" style={styles.loader} />
+            ) : (
+              <TouchableOpacity style={styles.signupButton} onPress={handleSignup}>
+                <Text style={styles.signupButtonText}>BECOME A MEMBER</Text>
+              </TouchableOpacity>
+            )}
 
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already a member? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-               <Text style={styles.footerLink}>Sign In</Text>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
+
+            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Sign up with Google</Text>
             </TouchableOpacity>
-          </View>
 
-        </View>
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Already a member? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <Text style={styles.loginLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' },
-  glowCenter: { position: 'absolute', top: '20%', right: -100, width: 400, height: 400, borderRadius: 200, backgroundColor: COLORS.goldLight, opacity: 0.25 },
-  content: { width: '100%', paddingHorizontal: 28 },
-  header: { marginBottom: 20, alignItems: 'center' },
-  brand: { fontSize: 12, fontWeight: '900', letterSpacing: 3, color: COLORS.gold, marginBottom: 10 },
-  title: { fontSize: 30, fontWeight: '400', color: COLORS.primary, fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', marginBottom: 6 },
-  subtitle: { fontSize: 14, color: '#666', fontStyle: 'italic' },
-
-  glassCard: {
-    backgroundColor: COLORS.glass, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: "#C6A87C", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 25, elevation: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF9F6', // Cream background
   },
-  inputContainer: { marginBottom: 14 },
-  label: { fontSize: 11, color: COLORS.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  input: { backgroundColor: COLORS.inputBg, height: 50, borderRadius: 8, paddingHorizontal: 16, fontSize: 15, color: COLORS.primary, borderWidth: 1, borderColor: '#E5E5E5' },
-
-  goldButton: {
-    backgroundColor: COLORS.primary, height: 54, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  keyboardView: {
+    flex: 1,
   },
-  btnText: { color: COLORS.gold, fontWeight: '700', fontSize: 14, letterSpacing: 1.5 },
-
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 18 },
-  line: { flex: 1, height: 1, backgroundColor: '#E5E5E5' },
-  orText: { marginHorizontal: 10, color: '#999', fontSize: 12 },
-
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  decorativeCircle: {
+    position: 'absolute',
+    top: -150,
+    left: -100, // Positioned differently than login for variety
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: '#F0EBE0',
+    opacity: 0.5,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 35,
+    marginTop: 20,
+  },
+  brandLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C5A065',
+    letterSpacing: 3,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
+    fontWeight: '500',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  formSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 160, 101, 0.1)',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  loader: {
+    marginTop: 20,
+  },
+  signupButton: {
+    backgroundColor: '#1A1A1A', // Dark button for "Become a Member" creates nice contrast
+    borderRadius: 8,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  signupButtonText: {
+    color: '#C5A065', // Gold text on black button
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EEEEEE',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#999',
+    fontSize: 12,
+  },
   googleButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFF', height: 54, borderRadius: 8,
-    borderWidth: 1, borderColor: '#E5E5E5',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  googleIcon: { fontSize: 18, fontWeight: '900', color: '#4285F4', marginRight: 12 },
-  googleText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
-  footerText: { color: '#666', fontSize: 14 },
-  footerLink: { color: COLORS.gold, fontWeight: '700', fontSize: 14 },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4285F4',
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  loginLink: {
+    fontSize: 14,
+    color: '#C5A065',
+    fontWeight: '700',
+  },
 });

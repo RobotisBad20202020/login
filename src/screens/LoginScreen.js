@@ -1,188 +1,304 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
   KeyboardAvoidingView,
   Platform,
-  StatusBar
+  ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-
-// --- COIFFEUR LUXURY THEME ---
-const COLORS = {
-  bg: '#FDFCF8',
-  primary: '#1A1A1A',
-  gold: '#C6A87C',
-  goldLight: '#E5D4B3',
-  glass: 'rgba(255, 255, 255, 0.90)',
-  border: 'rgba(198, 168, 124, 0.3)',
-  inputBg: '#FAFAFA',
-  placeholder: '#A1A1AA',
-};
+import auth from '@react-native-firebase/auth';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
-  // --- 1. Configure Google Sign-In on Mount ---
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID_FROM_FIREBASE_CONSOLE', 
-    });
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Coiffeur', 'Please enter your credentials.');
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
     try {
       await auth().signInWithEmailAndPassword(email, password);
+      navigation.replace('Home');
     } catch (error) {
-      Alert.alert('Login Failed', error.message);
+      console.error('Login error:', error);
+      let errorMessage = 'Login failed. Please try again.';
+      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address format.';
+      else if (error.code === 'auth/user-not-found') errorMessage = 'No account found with this email.';
+      else if (error.code === 'auth/wrong-password') errorMessage = 'Incorrect password.';
+      else if (error.code === 'auth/invalid-credential') errorMessage = 'Invalid email or password.';
+      else if (error.code === 'auth/too-many-requests') errorMessage = 'Too many attempts. Please try again later.';
+      
+      Alert.alert('Login Failed', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // --- 2. Google Sign-In Logic ---
-  const handleGoogleLogin = async () => {
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
     try {
-      // Check if your device supports Google Play
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      
-      // Get the users ID token
-      const { idToken } = await GoogleSignin.signIn();
-
-      // Create a Google credential with the token
+      await GoogleSignin.hasPlayServices();
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult.data?.idToken;
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-
-      // Sign-in the user with the credential
-      return auth().signInWithCredential(googleCredential);
+      await auth().signInWithCredential(googleCredential);
+      navigation.replace('Home');
     } catch (error) {
-      console.error(error);
-      Alert.alert("Google Sign-In Error", error.message);
+      console.error('Google Sign-In error:', error);
+      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
-      
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
-
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={styles.content}
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF9F6" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <Text style={styles.brand}>COIFFEUR</Text>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Experience luxury at your fingertips.</Text>
-        </View>
-
-        <View style={styles.glassCard}>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="client@example.com"
-              placeholderTextColor={COLORS.placeholder}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-            />
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header Section */}
+          <View style={styles.headerSection}>
+            <View style={styles.decorativeCircle} />
+            <Text style={styles.brandLabel}>COIFFEUR</Text>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Experience luxury at your fingertips.</Text>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="••••••••"
-              placeholderTextColor={COLORS.placeholder}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-          </View>
+          {/* Form Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="client@example.com"
+                placeholderTextColor="#A0A0A0"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
 
-          <TouchableOpacity style={styles.forgotBtn}>
-             <Text style={styles.forgotText}>Forgot Password?</Text>
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#A0A0A0"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
 
-          <TouchableOpacity style={styles.goldButton} onPress={handleLogin} activeOpacity={0.9}>
-             <Text style={styles.btnText}>SIGN IN</Text>
-          </TouchableOpacity>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#C5A065" style={styles.loader} />
+            ) : (
+              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                <Text style={styles.loginButtonText}>SIGN IN</Text>
+              </TouchableOpacity>
+            )}
 
-          {/* --- OR DIVIDER --- */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <Text style={styles.orText}>OR</Text>
-            <View style={styles.line} />
-          </View>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.divider} />
+            </View>
 
-          {/* --- GOOGLE BUTTON --- */}
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin} activeOpacity={0.9}>
-             {/* In a real app, use <Image source={require('./google-icon.png')} /> */}
-             <Text style={styles.googleIcon}>G</Text> 
-             <Text style={styles.googleText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>New to Coiffeur? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-               <Text style={styles.footerLink}>Create Account</Text>
+            <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn}>
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
-          </View>
 
-        </View>
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>New to Coiffeur? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+                <Text style={styles.signupLink}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center' },
-  glowTop: { position: 'absolute', top: -100, left: -50, width: 300, height: 300, borderRadius: 150, backgroundColor: COLORS.goldLight, opacity: 0.4 },
-  glowBottom: { position: 'absolute', bottom: -80, right: -60, width: 320, height: 320, borderRadius: 160, backgroundColor: COLORS.goldLight, opacity: 0.3 },
-  content: { width: '100%', paddingHorizontal: 28 },
-  header: { marginBottom: 24, alignItems: 'center' },
-  brand: { fontSize: 12, fontWeight: '900', letterSpacing: 3, color: COLORS.gold, marginBottom: 10 },
-  title: { fontSize: 30, fontWeight: '400', color: COLORS.primary, fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', marginBottom: 6 },
-  subtitle: { fontSize: 14, color: '#666', fontStyle: 'italic' },
-
-  glassCard: {
-    backgroundColor: COLORS.glass, borderRadius: 24, padding: 28, borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: "#C6A87C", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 25, elevation: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#FAF9F6', // Cream background
   },
-  inputContainer: { marginBottom: 16 },
-  label: { fontSize: 11, color: COLORS.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
-  input: { backgroundColor: COLORS.inputBg, height: 50, borderRadius: 8, paddingHorizontal: 16, fontSize: 15, color: COLORS.primary, borderWidth: 1, borderColor: '#E5E5E5' },
-  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20 },
-  forgotText: { color: '#888', fontSize: 12 },
-
-  goldButton: {
-    backgroundColor: COLORS.gold, height: 54, borderRadius: 8, justifyContent: 'center', alignItems: 'center',
-    shadowColor: COLORS.gold, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  keyboardView: {
+    flex: 1,
   },
-  btnText: { color: '#FFF', fontWeight: '700', fontSize: 14, letterSpacing: 1.5 },
-
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 20 },
-  line: { flex: 1, height: 1, backgroundColor: '#E5E5E5' },
-  orText: { marginHorizontal: 10, color: '#999', fontSize: 12 },
-
-  googleButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFF', height: 54, borderRadius: 8,
-    borderWidth: 1, borderColor: '#E5E5E5',
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  decorativeCircle: {
+    position: 'absolute',
+    top: -150,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: '#F0EBE0', // Subtle darker cream/beige circle
+    opacity: 0.5,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 40,
+    marginTop: 40,
+  },
+  brandLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#C5A065', // Gold
+    letterSpacing: 3,
     marginBottom: 10,
+    textTransform: 'uppercase',
   },
-  googleIcon: { fontSize: 18, fontWeight: '900', color: '#4285F4', marginRight: 12 }, 
-  googleText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
-
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
-  footerText: { color: '#666', fontSize: 14 },
-  footerLink: { color: COLORS.gold, fontWeight: '700', fontSize: 14 },
+  title: {
+    fontSize: 32,
+    fontFamily: Platform.OS === 'ios' ? 'Times New Roman' : 'serif',
+    fontWeight: '500',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  formSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 15,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(197, 160, 101, 0.1)', // Very faint gold border
+  },
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 15,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    color: '#888',
+    fontSize: 12,
+  },
+  loader: {
+    marginTop: 20,
+  },
+  loginButton: {
+    backgroundColor: '#C5A065', // Gold
+    borderRadius: 8,
+    padding: 18,
+    alignItems: 'center',
+    marginTop: 24,
+    shadowColor: '#C5A065',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#EEEEEE',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: '#999',
+    fontSize: 12,
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  googleIcon: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4285F4', // Keep Google blue or make it consistent? Keeping blue for recognition.
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  signupText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  signupLink: {
+    fontSize: 14,
+    color: '#C5A065',
+    fontWeight: '700',
+  },
 });

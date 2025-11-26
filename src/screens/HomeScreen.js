@@ -1,315 +1,282 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  StyleSheet, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  Alert, 
-  Platform, 
-  StatusBar,
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   TextInput,
-  ScrollView
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  StatusBar,
+  SafeAreaView,
+  Platform,
+  Alert
 } from 'react-native';
 import auth from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-// --- UNIQUE "EARTHY LUXURY" THEME ---
-const THEME = {
-  dark: '#1C1917',      // Warm Black
-  medium: '#44403C',    // Dark Stone
-  light: '#A8A29E',     // Muted Gray
-  accent: '#D97706',    // Bronze/Gold
-  background: '#FAFAF9', // Warm Off-White
-  surface: '#FFFFFF',   
-  pillActive: '#292524',
-  pillInactive: '#E7E5E4',
-};
+export default function HomeScreen({ navigation }) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState(null);
 
-// --- Mock Data ---
-const CATEGORIES = ['All', 'Hair', 'Spa', 'Nails', 'Makeup', 'Massage'];
-
-const SALONS = [
-  { 
-    id: '1', 
-    name: 'Luxe Hair Studio', 
-    location: 'Indiranagar, Bangalore', 
-    rating: 4.8, 
-    tags: ['Hair', 'Color'],
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=800' 
-  },
-  { 
-    id: '2', 
-    name: 'Urban Glow Spa', 
-    location: 'Bandra West, Mumbai', 
-    rating: 4.5, 
-    tags: ['Spa', 'Massage'],
-    image: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=1469&auto=format&fit=crop' 
-  },
-  { 
-    id: '3', 
-    name: 'The Barber Collective', 
-    location: 'Hauz Khas, New Delhi', 
-    rating: 4.9, 
-    tags: ['Men', 'Hair'],
-    image: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800' 
-  },
-];
-
-// --- Components ---
-
-const UniqueSalonCard = ({ item }) => (
-  <TouchableOpacity style={styles.cardContainer} activeOpacity={0.95}>
-    <View style={styles.cardInner}>
-      <Image source={{ uri: item.image }} style={styles.cardImage} />
-      <View style={styles.gradientOverlay} />
-      
-      <View style={styles.glassBadge}>
-        <Text style={styles.starText}>★ {item.rating}</Text>
-      </View>
-
-      <View style={styles.cardOverlayContent}>
-        <View>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          <Text style={styles.cardLocation}>📍 {item.location}</Text>
-        </View>
-        <TouchableOpacity style={styles.bookButton}>
-           <Text style={styles.bookText}>Reserve</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
-
-const CategoryPill = ({ name, isActive, onPress }) => (
-  <TouchableOpacity 
-    onPress={onPress}
-    style={[styles.pill, isActive ? styles.pillActive : styles.pillInactive]}
-  >
-    <Text style={[styles.pillText, isActive ? styles.pillTextActive : styles.pillTextInactive]}>
-      {name}
-    </Text>
-  </TouchableOpacity>
-);
-
-export default function HomeScreen() {
-  const [currentUser, setCurrentUser] = useState(auth().currentUser);
-  const [searchText, setSearchText] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
-
+  // Fetch the current user when the component mounts
   useEffect(() => {
-    const refreshUser = async () => {
-      try { await auth().currentUser?.reload(); setCurrentUser(auth().currentUser); } catch (e) {}
-    };
-    refreshUser();
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      setUser(currentUser);
+    }
   }, []);
 
-  const handleProfilePress = () => {
-    const name = currentUser?.displayName || 'Guest';
-    const email = currentUser?.email || 'No Email';
-    Alert.alert("My Account", `${name}\n${email}`, [
-      { text: "Cancel", style: 'cancel' },
-      { text: "Log Out", style: 'destructive', onPress: () => auth().signOut() }
-    ]);
-  };
+  const salons = [
+    {
+      id: 1,
+      name: 'Luxe Hair Studio',
+      location: 'Fashion Ave, NY',
+      rating: 4.8,
+      image: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1000&auto=format&fit=crop', 
+    },
+    {
+      id: 2,
+      name: 'Urban Glow Spa',
+      location: 'Sunset Blvd, LA',
+      rating: 4.5,
+      image: 'https://images.unsplash.com/photo-1629397685944-7073f5589754?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    },
+    {
+      id: 3,
+      name: 'Blade & Razor',
+      location: 'Downtown, Chicago',
+      rating: 4.9,
+      image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1374&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+    },
+  ];
 
-  const getFirstName = () => {
-    if (currentUser?.displayName) return currentUser.displayName.split(' ')[0];
-    return 'Guest';
-  };
-
-  const filteredSalons = SALONS.filter(salon => 
-    (activeCategory === 'All' || salon.tags.includes(activeCategory)) &&
-    (salon.name.toLowerCase().includes(searchText.toLowerCase()) || 
-     salon.location.toLowerCase().includes(searchText.toLowerCase()))
+  const filteredSalons = salons.filter(salon => 
+    salon.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    salon.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={THEME.background} />
-      
-      {/* --- Compact Unique Header --- */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeLabel}>Good Morning,</Text>
-          <Text style={styles.welcomeName}>{getFirstName()}</Text>
-        </View>
-        <TouchableOpacity onPress={handleProfilePress} style={styles.profileRing}>
-           <Image 
-             source={{ uri: 'https://ui-avatars.com/api/?name=' + getFirstName() + '&background=1C1917&color=fff' }} 
-             style={styles.profileImage} 
-           />
-        </TouchableOpacity>
-      </View>
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await auth().signOut().catch(() => {});
+              await GoogleSignin.signOut().catch(() => {});
+            } catch (error) {
+              console.error('Logout error:', error);
+            } finally {
+              navigation.replace('Login');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
-      {/* --- Search --- */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+  // Get display name or fallback
+  const displayName = user?.displayName || 'User';
+  const displayInitial = displayName.charAt(0).toUpperCase();
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <ScrollView 
+        contentContainerStyle={styles.container} 
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greetingText}>Hello, <Text style={styles.userName}>{displayName}</Text></Text>
+            <Text style={styles.subHeader}>Find your style</Text>
+          </View>
+          <TouchableOpacity style={styles.profileIcon} onPress={handleLogout}>
+             <Text style={styles.profileInitial}>{displayInitial}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <Text style={styles.searchIcon}>🔍</Text> 
           <TextInput
-            style={styles.input}
-            placeholder="Find your glow..."
-            placeholderTextColor={THEME.light}
-            value={searchText}
-            onChangeText={setSearchText}
+            style={styles.searchInput}
+            placeholder="Search salons..."
+            placeholderTextColor="#A0A0A0"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
         </View>
-      </View>
 
-      {/* --- Categories --- */}
-      <View style={styles.categorySection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24 }}>
-          {CATEGORIES.map((cat) => (
-            <CategoryPill 
-              key={cat} 
-              name={cat} 
-              isActive={activeCategory === cat} 
-              onPress={() => setActiveCategory(cat)}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* --- List --- */}
-      <FlatList
-        data={filteredSalons}
-        renderItem={({ item }) => <UniqueSalonCard item={item} />}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={{ height: 24 }} />}
-      />
+        {/* Salon List */}
+        <View style={styles.listContainer}>
+          {filteredSalons.length > 0 ? (
+            filteredSalons.map((salon) => (
+              <TouchableOpacity key={salon.id} style={styles.card} activeOpacity={0.9}>
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: salon.image }} style={styles.cardImage} />
+                  <View style={styles.ratingBadge}>
+                    <Text style={styles.ratingText}>★ {salon.rating}</Text>
+                  </View>
+                </View>
+                <View style={styles.cardContent}>
+                  <View>
+                    <Text style={styles.salonName}>{salon.name}</Text>
+                    <Text style={styles.salonLocation}>{salon.location}</Text>
+                  </View>
+                  <Text style={styles.arrow}>›</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.noResultsContainer}>
+               <Text style={styles.noResultsText}>No salons found matching "{searchQuery}"</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: THEME.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 5 : 0,
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: Platform.OS === 'android' ? 30 : 0,
   },
-  
-  // --- Compact Header Styles ---
+  container: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center', // Centered vertically
-    paddingHorizontal: 24,
-    marginTop: 6,        // Reduced from 10
-    marginBottom: 16,    // Reduced from 24
+    alignItems: 'flex-start',
+    marginTop: 20,
+    marginBottom: 20,
   },
-  welcomeLabel: {
-    fontSize: 12,       // Reduced from 14
-    color: THEME.medium,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
-    marginBottom: 2,
+  greetingText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 4,
   },
-  welcomeName: {
-    fontSize: 22,       // Reduced from 32
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
-    fontWeight: '700',
-    color: THEME.dark,
-    lineHeight: 26,     // Tighter line height
+  userName: {
+    fontWeight: 'bold',
+    color: '#000',
   },
-  profileRing: {
-    padding: 2,
-    borderWidth: 1,
-    borderColor: THEME.medium,
-    borderRadius: 50,
+  subHeader: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A1A1A',
   },
-  profileImage: {
-    width: 38,          // Slightly smaller
-    height: 38,
-    borderRadius: 19,
+  profileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F0F0F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-
-  // Search
-  searchSection: {
-    paddingHorizontal: 24,
-    marginBottom: 20, // Reduced spacing
+  profileInitial: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#333',
   },
-  searchBar: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.surface,
-    height: 52, // Slightly shorter
-    borderRadius: 26,
-    paddingHorizontal: 20,
-    shadowColor: "#D97706",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: '#F5F6FA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 30,
   },
-  searchIcon: { fontSize: 18, marginRight: 12, opacity: 0.4 },
-  input: { flex: 1, fontSize: 15, color: THEME.dark, fontWeight: '500' },
-
-  // Categories
-  categorySection: { marginBottom: 20, height: 36 }, // Compact
-  pill: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 18,
+  searchIcon: {
     marginRight: 10,
-    justifyContent: 'center',
+    fontSize: 16,
+    color: '#A0A0A0'
   },
-  pillActive: { backgroundColor: THEME.pillActive },
-  pillInactive: { backgroundColor: THEME.pillInactive },
-  pillText: { fontWeight: '600', fontSize: 13 },
-  pillTextActive: { color: '#FFF' },
-  pillTextInactive: { color: THEME.medium },
-
-  // Cards
-  listContent: { paddingHorizontal: 24, paddingBottom: 40 },
-  cardContainer: {
-    height: 260, 
-    borderRadius: 32,
-    backgroundColor: THEME.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 6,
-  },
-  cardInner: {
+  searchInput: {
     flex: 1,
-    borderRadius: 32,
+    fontSize: 16,
+    color: '#333',
+  },
+  listContainer: {
+    gap: 24,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  imageContainer: {
+    height: 200,
+    width: '100%',
     position: 'relative',
   },
-  cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  glassBadge: {
+  ratingBadge: {
     position: 'absolute',
-    top: 20, right: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 12,
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  starText: { fontWeight: 'bold', fontSize: 12, color: THEME.dark },
-  cardOverlayContent: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    padding: 24,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    backgroundColor: 'rgba(28, 25, 23, 0.5)', 
+  ratingText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
   },
-  cardTitle: {
-    fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 4, letterSpacing: 0.5,
+  cardContent: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  cardLocation: {
-    fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '500',
+  salonName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 4,
   },
-  bookButton: {
-    backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 14,
+  salonLocation: {
+    fontSize: 14,
+    color: '#666',
   },
-  bookText: {
-    color: THEME.dark, fontWeight: '700', fontSize: 11, textTransform: 'uppercase',
+  arrow: {
+    fontSize: 24,
+    color: '#CCCCCC',
+    fontWeight: '300',
   },
+  noResultsContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  noResultsText: {
+    fontSize: 16,
+    color: '#999',
+  }
 });
